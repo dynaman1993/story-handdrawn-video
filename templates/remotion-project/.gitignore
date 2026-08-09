@@ -1,0 +1,8 @@
+node_modules/
+out/
+build/
+public/audio/narration/*.mp3
+public/audio/narration/timeline.json
+public/assets/videos/*.mp4
+!public/audio/narration/.gitkeep
+!public/assets/videos/.gitkeep

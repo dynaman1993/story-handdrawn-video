@@ -1,0 +1,30 @@
+{
+  "name": "story-handdrawn-video-project",
+  "version": "1.0.0",
+  "description": "Q-version hand-drawn crayon story video (Agnes Video V2.0 + Remotion). Skill: story-handdrawn-video.",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "remotion studio src/index.ts",
+    "build": "remotion bundle src/index.ts build",
+    "render": "remotion render src/index.ts StoryVideo out/story.mp4 --codec=h264 --crf=18 --pixel-format=yuv420p --concurrency=1",
+    "render:preview": "remotion render src/index.ts StoryVideo out/story-preview.mp4 --codec=h264 --crf=23 --pixel-format=yuv420p --concurrency=1",
+    "check": "tsc --noEmit",
+    "check:types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.487",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
+    "remotion": "4.0.487"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.11",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "typescript": "5.9.3"
+  }
+}
