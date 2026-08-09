@@ -7,7 +7,7 @@ description: 用 Agnes Video V2.0 纯文生视频 + Remotion 制作 9:16 竖屏�
 
 把一段中文故事文本直接变成 9:16 竖屏（720×1280）的手绘蜡笔风短视频。**和 `story-handdrawn-remotion` 的区别**：那个技能用静帧 + 三层横向擦除讲「一句话被画三次」，这个技能每场直接是一个 Agnes 文生视频片段，画面自己会动，没有擦除、没有翻页。
 
-**工具链**：Agnes Video V2.0（`agnes-video-v2.0`，当前 $0/秒，文生视频）+ edge-tts（默认免费旁白）/ MiniMax（可选高质量）+ Remotion（组装视频 + 字幕 + 音轨）。
+**工具链**：Agnes Video V2.0（`agnes-video-v2.0`，当前 $0/秒，文生视频）+ edge-tts（免费旁白，无需 API key）+ Remotion（组装视频 + 字幕 + 音轨）。
 
 **核心方法论**：
 1. **先 TTS，再视频**——旁白时长决定视频帧数，不裁不冻不补。
@@ -33,7 +33,7 @@ description: 用 Agnes Video V2.0 纯文生视频 + Remotion 制作 9:16 竖屏�
 | 运动 | locked frontal camera, rigid paper cutouts, 10–12fps stop-motion, 无 zoom/parallax/drift, 无口型, settle and hold |
 | 素材 | Agnes Video 纯文生视频 mp4，**无参考图** |
 | 字幕 | MaShanZheng 毛笔字，确定性 Remotion 渲染，不在画面底部与安全区冲突 |
-| 旁白 | edge-tts `zh-CN-XiaoyiNeural`（默认免费）；可选 MiniMax `female-shaonv` |
+| 旁白 | edge-tts `zh-CN-XiaoyiNeural`（免费，无需 API key） |
 | 输出 | H.264 MP4，含旁白音轨；视频片段本身 muted |
 
 ## 新一集工作流（7 步）
@@ -52,17 +52,19 @@ UTF-8 文本，单句 ≤ 36 字（softLimit），按 `。！？；` 切。自�
 
 ```bash
 mkdir "<VIDEO_WORKSPACE>/<项目名>"
-cp -R "D:/story-skill/.claude/skills/story-handdrawn-video/templates/remotion-project/." \
+cp -R "<本 skill 安装路径>/templates/remotion-project/." \
       "<VIDEO_WORKSPACE>/<项目名>/"
 cd "<VIDEO_WORKSPACE>/<项目名>" && npm install
 ```
+
+> `<本 skill 安装路径>` = 该 skill 在当前环境实际的安装目录（含 `SKILL.md`、`scripts/`、`templates/`）。AI 执行时按实际安装位置替换。
 
 ⚠️ 用原生 `npm install`，不要 `rtk npm install`。
 
 模板自带：
 - `public/fonts/MaShanZheng-Regular.ttf`（OFL 协议）
 - `public/audio/narration/`、`public/assets/videos/`（占位）
-- `examples/story.txt`、`examples/narration.yaml`
+- `examples/story.txt`（中文蜡笔风示例）、`examples/story_textbook.txt`（英文教材风示例）、`examples/teaching_content.example.json`（教学卡字段示例）
 
 ### 4. 视觉规划（可选但推荐）
 
@@ -75,7 +77,7 @@ cd "<VIDEO_WORKSPACE>/<项目名>" && npm install
 }
 ```
 
-没有 visual_plan 时，脚本会从中文原句提取动词 + 名词拼一个朴素的英文 scene direction（70% 够用）。
+没有 visual_plan 时，脚本直接把中文原句作为 scene body 塞进 prompt（Agnes Video 能理解中文语义，靠 negative_prompt 抑制画面文字，70% 够用）。
 
 ### 5. 一条命令跑完 TTS + 视频 + storyboard
 
@@ -96,7 +98,7 @@ python scripts/gen_story_videos.py story.txt \
   --skip-tts   # 用现成 mp3+LRC 切片时加；新项目去掉
 ```
 
-CQ001 完整成功案例：`D:\story-skill\workspace\cq001-hdvideo\`（27 场，270s，含教学卡 + LRC 切片 + 自写 teaching_content）。
+CQ001 完整成功案例（27 场，270s，含教学卡 + LRC 切片 + 自写 teaching_content）的前三场教学卡字段已收录在模板 `examples/teaching_content.example.json`，可作为 textbook 写法参考。
 
 脚本流程：
 1. 分句 → 生成 `narration.yaml`（id 用 `s01/s02` 字符串，不要裸数字）
@@ -112,7 +114,6 @@ python scripts/gen_story_videos.py story.txt --title "..." --dry-run
 ```
 
 **常用参数**：
-- `--tts-edge / --tts-minimax`（默认 edge 免费）
 - `--concurrency N`（默认 1，免费 key 限流 1 req/min；调高会大量 429）
 - `--width 720 --height 1280`（默认；可改 1080×1920，但 preview 仍按 720 渲）
 - `--frame-rate 24`（默认）
@@ -121,7 +122,7 @@ python scripts/gen_story_videos.py story.txt --title "..." --dry-run
 - `--style crayon|textbook`（默认 crayon；textbook 见下方「英语教学模式」）
 - `--teaching-content teaching_content.json`（textbook 模式：每场 keyword/ipa/meaning/definition/example/visual；脚本优先用其中的 `visual` 作为 scene body，并把教学字段写进 storyboard）
 - `--paragraph-beats`（LRC 已切片项目用：每个空行段落即一拍，不再按 `。！？；` 和逗号切；适合 audio 已按 LRC 时间戳切好的项目）
-- `--rebuild-storyboard`（即 `--skip-tts --skip-video`：只根据已存在的音频/视频重新拼 storyboard.json，不生成新内容）
+- `--skip-tts --skip-video`（只根据已存在的音频/视频重新拼 storyboard.json，不生成新内容）
 
 ### 6. 静态检查（Remotion Studio）
 
@@ -156,7 +157,7 @@ npm run render   # → out/story.mp4 (1080×1920)
 2. **视频要有可见动效**。textbook 的 motion footer 允许帆船航行、羽毛笔书写、人物走动/手势、旗帜飘动、翻页等**支撑句意的动作**，不要写成 static icon。
 3. **教学卡由 Remotion 确定性叠加**（`TeachingCard.tsx`）：深蓝顶条「范例与讲解」→「重点词汇」蓝标 → 关键词粗体大字 → IPA → 三行 `01 含义(中) / 02 定义(英) / 03 例句(蓝)`。卡片**完全透明**：除深蓝顶条外**不要任何白底、不要任何 `backdrop-filter: blur`**（毛玻璃会把视频糊成奶白板，和挡视频是一回事）；文字用 `text-shadow` 白色光晕（`0 1px 2px rgba(255,255,255,.95), 0 0 8px rgba(255,255,255,.85), 0 0 14px rgba(255,255,255,.6)`）保证在任何视频背景上可读。高度只包住内容，底部露视频；**绝不能整屏白底挡住动画**。底部叠整句英文字幕。
 4. **文字一律 Remotion 渲染**，prompt negative 强制排除画面文字；IPA/释义/定义/例句由你根据每句关键词**自己写教学内容**（不是从原文搬）。
-5. storyboard 每场需含 `keyword/ipa/meaning/definition/example/text` 字段；`Scene.tsx` 检测到这些字段自动切教学卡模式。
+5. storyboard 每场需含 `keyword/meaning/definition/example` 字段（`ipa` 可选，缺则教学卡不显示音标行）；`Scene.tsx` 检测到这四个必填字段即切教学卡模式。
 
 ### 教学内容文件（`teaching_content.json`）
 

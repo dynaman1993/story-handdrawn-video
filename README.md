@@ -8,7 +8,7 @@
 
 - **视频**：Agnes Video V2.0（`agnes-video-v2.0`，当前 $0/秒，纯文生视频，无参考图、无图生视频、无 character_reference）
 - **字幕**：MaShanZheng 毛笔字，Remotion 确定性渲染（prompt 里 negative 强制排除画面文字，禁止让视频模型画中文）
-- **音频**：edge-tts（默认 `zh-CN-XiaoyiNeural`，免费）/ MiniMax T2A v2（可选 `female-shaonv`，付费）
+- **音频**：edge-tts（默认 `zh-CN-XiaoyiNeural`，免费，无需 API key；英文 `en-US-JennyNeural`）
 - **时序**：ffprobe 量每段旁白真实时长 → 按 24fps、`8n+1` 规则算 num_frames（上限 441 ≈ 18.3s）
 - **渲染**：Remotion 4.x（组装视频片段 + 字幕 + 音轨）
 
@@ -38,13 +38,12 @@ https://www.bilibili.com/video/BV1PDuj61EWs/?vd_source=86926e418c83af75f6850b554
 
 ## 后端 API 选择
 
-本 skill 的视频后端固定为 Agnes Video V2.0（纯文生视频，当前 $0/秒），异步任务 + 轮询。免费 key 限流 **1 req/min**，脚本默认 `--concurrency 1` 串行，429 自动等 65s 重试。音频后端可选 edge-tts（免费默认）或 MiniMax（付费）。
+本 skill 的视频后端固定为 Agnes Video V2.0（纯文生视频，当前 $0/秒），异步任务 + 轮询。免费 key 限流 **1 req/min**，脚本默认 `--concurrency 1` 串行，429 自动等 65s 重试。音频后端固定 edge-tts（免费、无需 API key）。
 
 | 后端 | 类型 | 收费 | 适用 |
 |---|---|---|---|
 | Agnes Video V2.0（默认） | 文生视频 | 当前 $0/秒 | 默认全流程，每场一段 mp4 |
-| `--tts-backend edge`（默认） | 语音合成 | 免费 | 默认旁白，质量够用 |
-| `--tts-backend minimax` | 语音合成 | 付费 | 想要更高质量旁白 |
+| edge-tts（默认） | 语音合成 | 免费 | 旁白，无需 API key |
 
 Agnes key 免费申请地址： https://agnes-ai.com/
 
@@ -167,14 +166,9 @@ scenes:
     text: "..."
 ```
 
-### TTS 后端选择建议
+### TTS 配音
 
-视频后端固定 Agnes Video V2.0，只有 TTS 可选：
-
-| TTS 后端 | 收费 | 适用 |
-|---|---|---|
-| `--tts-backend edge`（默认） | 免费 | 默认旁白，质量够用 |
-| `--tts-backend minimax` | 付费 | 想要更高质量旁白 |
+视频后端固定 Agnes Video V2.0，TTS 固定 edge-tts（免费、无需 API key）。无需选后端，直接在 `narration.yaml` 配 voice / speed 即可。
 
 ### 常见坑
 

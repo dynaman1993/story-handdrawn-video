@@ -7,15 +7,15 @@ story.txt
   ↓ splitStory（按 。！？；切，超长按 ，、和转折词再切）
 scenes[] = {sid, caption}
   ↓ 写 narration.yaml（id=s01/s02，文本=caption）
-edge-tts (并发)  → public/audio/narration/sXX.mp3
+edge-tts (串行)  → public/audio/narration/sXX.mp3
   ↓ ffprobe
 每段 duration_sec
   ↓ 算 num_frames (24fps, 8n+1, ≤441)
 每段 prompt (STYLE_HEADER + scene body + MOTION_FOOTER + NEGATIVE)
-  ↓ POST /v1/videos (4 路并发)
+  ↓ POST /v1/videos (默认 concurrency=1，免费 key 限流 1 req/min)
 task_id / video_id
-  ↓ GET /agnesapi?video_id= 轮询（8s 间隔，最长 10min）
-metadata.url
+  ↓ GET /agnesapi?video_id= 轮询（8s 间隔，最长 15min）
+顶层 url
   ↓ 下载
 public/assets/videos/sXX.mp4
   ↓
@@ -46,8 +46,8 @@ num_frames = max(num_frames, 41)                     # 下限 ≈1.7s
 
 | 用途 | 方法 + URL |
 |---|---|
-| 创建任务 | `POST https://apihub.agnes-ai.com/v1/videos` |
-| 查结果 | `GET  https://apihub.agnes-ai.com/agnesapi?video_id=<VIDEO_ID>` |
+| 创建任务 | `POST https://api.agnes-ai.cn/v1/videos` |
+| 查结果 | `GET  https://api.agnes-ai.cn/agnesapi?video_id=<VIDEO_ID>` |
 
 请求头：
 ```
@@ -55,16 +55,19 @@ Authorization: Bearer $AGNES_API_KEY
 Content-Type: application/json
 ```
 
-API key 从 `D:/video-spec-builder-main/.env` 的 `AGNES_API_KEY=` 读，
-和老 skill 共用一个 key（老的图片端点是 `api.agnes-ai.cn`，视频端点是
-`apihub.agnes-ai.com`，两个 host 同一个 key）。
+API key 查找顺序：环境变量 `AGNES_API_KEY` > 当前目录 `.env` > 父目录 `.env`
+> 父父目录 `.env`。在任一位置放一行 `AGNES_API_KEY=sk-...` 即可，无需绑定固定路径。
+
+> 注：Agnes 官方文档写的 host 是 `apihub.agnes-ai.com`，但该 host 对中国站 key
+> 返回 401；实际用 `api.agnes-ai.cn`（和图片端点同 host，同一把 key）。视频结果 URL
+> 在响应顶层 `url` 字段，不是文档说的 `metadata.url`。脚本已处理。
 
 ## 创建任务 payload
 
 ```json
 {
   "model": "agnes-video-v2.0",
-  "prompt": "<STYLE_HEADER>\\n<scene body>\\n<MOTION_FOOTER>",
+  "prompt": "<STYLE_HEADER>\n<scene body>\n<MOTION_FOOTER>",
   "negative_prompt": "text, letters, subtitles, ...",
   "width": 720,
   "height": 1280,
@@ -80,7 +83,8 @@ API key 从 `D:/video-spec-builder-main/.env` 的 `AGNES_API_KEY=` 读，
 
 - 初始 `status=queued`，然后 `in_progress`，最后 `completed` 或 `failed`。
 - 每 8s GET 一次。
-- 完成时 `metadata.url` 是 mp4 CDN URL，直接下载。
+- 单段视频最多等 15 分钟（`POLL_MAX_WAIT_SEC = 900`，长片段 14s 实测 150s+）。
+- 完成时顶层 `url` 是 mp4 CDN URL，直接下载（兼容国际站 `metadata.url`）。
 - 失败时 `error` 字段有原因；脚本抛异常，其他已完成段不受影响。
 
 ## storyboard.json schema
@@ -88,14 +92,18 @@ API key 从 `D:/video-spec-builder-main/.env` 的 `AGNES_API_KEY=` 读，
 ```json
 {
   "title": "我的小猫",
+  "lang": "zh",
+  "style": "crayon",
   "width": 720,
   "height": 1280,
   "fps": 30,
+  "frame_rate_video": 24,
   "scenes": [
     {
       "id": "s01",
       "caption": "下雨天，我在巷口捡到一只橘猫。",
       "narration": "下雨天，我在巷口捡到一只橘猫。",
+      "text": "下雨天，我在巷口捡到一只橘猫。",
       "narration_audio": "audio/narration/s01.mp3",
       "motion_video": "assets/videos/s01.mp4",
       "duration_sec": 4.82,
@@ -105,5 +113,8 @@ API key 从 `D:/video-spec-builder-main/.env` 的 `AGNES_API_KEY=` 读，
   ]
 }
 ```
+
+textbook 模式下每场 scene 还会带 `keyword` / `ipa` / `meaning` / `definition`
+/ `example` 字段，`Scene.tsx` 检测到这些字段自动切教学卡模式。
 
 Remotion 的 `src/storyboard.ts` 直接 `import storyboard.json`。

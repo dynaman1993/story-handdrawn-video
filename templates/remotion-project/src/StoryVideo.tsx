@@ -3,9 +3,6 @@ import {AbsoluteFill, Sequence} from 'remotion';
 import {Scene} from './Scene';
 import storyboard from './storyboard';
 
-const LANG: 'zh' | 'en' =
-  (storyboard as {lang?: string}).lang === 'zh' ? 'zh' : 'en';
-
 export const StoryVideo: React.FC = () => {
   let cursor = 0;
   return (
@@ -16,7 +13,7 @@ export const StoryVideo: React.FC = () => {
         cursor += frames;
         return (
           <Sequence key={s.id} from={from} durationInFrames={frames}>
-            <Scene scene={s} fps={storyboard.fps} lang={LANG} />
+            <Scene scene={s} fps={storyboard.fps} />
           </Sequence>
         );
       })}

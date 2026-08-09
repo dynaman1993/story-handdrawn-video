@@ -3,7 +3,7 @@
 一条命令跑完整个素材生产链：
   1. 分句（中文按 。！？；，超长按 ，、 和转折词再切；英文按 . ! ? ;）
   2. 写 narration.yaml
-  3. 跑 edge-tts（默认免费；--tts-minimax 切高质量）→ public/audio/narration/sXX.mp3
+  3. 跑 edge-tts（免费）→ public/audio/narration/sXX.mp3
   4. ffprobe 量真实时长
   5. 按 24fps、8n+1 规则算每场 num_frames（上限 441）
   6. 拼 prompt（STYLE_HEADER + scene body + MOTION_FOOTER；固定 negative）
@@ -297,14 +297,13 @@ def resolve_scene_body(visual_plan: dict[str, str], sid: str, idx: int, caption:
 # 主流程
 # ----------------------------------------------------------------------------
 
-def run_tts(narration_yaml: Path, backend: str) -> None:
-    """调 gen_tts.py 子进程（保持和单独跑一致的行为）。"""
+def run_tts(narration_yaml: Path) -> None:
+    """调 gen_tts.py 子进程（edge-tts 免费，无需 API key）。"""
     cmd = [
         sys.executable,
         str(Path(__file__).parent / "gen_tts.py"),
         str(narration_yaml),
         "--out-dir", "public/audio/narration",
-        "--backend", backend,
     ]
     print("$", " ".join(cmd))
     result = subprocess.run(cmd, encoding="utf-8", errors="replace")
@@ -349,8 +348,6 @@ def main() -> None:
     p.add_argument("--teaching-content", default=None,
                    help="teaching_content.json 路径（textbook 模式）；含 keyword/ipa/meaning/definition/example/visual")
     p.add_argument("--lang", choices=["zh", "en"], default="zh")
-    p.add_argument("--tts-backend", choices=["edge", "minimax"], default="edge",
-                   help="TTS 后端（默认 edge 免费）")
     p.add_argument("--width", type=int, default=720)
     p.add_argument("--height", type=int, default=1280)
     p.add_argument("--frame-rate", type=int, default=24)
@@ -427,7 +424,7 @@ def main() -> None:
     if args.skip_tts:
         print("跳过 TTS（--skip-tts）")
     else:
-        run_tts(narration_yaml, args.tts_backend)
+        run_tts(narration_yaml)
 
     # 读 timeline.json 拿每段时长
     timeline_path = audio_dir / "timeline.json"

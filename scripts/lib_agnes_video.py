@@ -1,6 +1,6 @@
 """lib_agnes_video.py — Agnes Video V2.0 HTTP 客户端
 
-直连 https://apihub.agnes-ai.com/v1/videos 创建任务，
+直连 https://api.agnes-ai.cn/v1/videos 创建任务，
 GET /agnesapi?video_id= 轮询结果，下载最终 mp4。
 
 模型：agnes-video-v2.0
@@ -10,8 +10,9 @@ GET /agnesapi?video_id= 轮询结果，下载最终 mp4。
 - 纯文生视频（本 skill 不传 image / extra_body.image）
 - 异步：create 返回 task_id + video_id，轮询 video_id
 - 500/502/503/504 指数退避重试（和 lib_agnes.py 一致）
-- API key 从 D:/video-spec-builder-main/.env 的 AGNES_API_KEY 读，
-  和图片生成共用同一个 key（host 不同：图片是 api.agnes-ai.cn，视频是 apihub.agnes-ai.com）
+- API key 查找顺序：环境变量 AGNES_API_KEY > 当前目录 .env
+  > 父目录 .env > 父父目录 .env（兼容项目根 / monorepo 布局）
+- 同一 key 在 api.agnes-ai.cn（图片端点同 host）可用
 """
 from __future__ import annotations
 
@@ -38,19 +39,31 @@ RATE_LIMIT_WAIT_SEC = 65
 
 
 def _load_env_file() -> None:
+    """从候选路径读 .env，注入 AGNES_* 变量。
+
+    查找顺序：当前目录 .env → 父目录 .env → 父父目录 .env。
+    找到 AGNES_API_KEY 即停止（不覆盖已存在的环境变量）。
+    """
     if os.environ.get("AGNES_API_KEY"):
         return
-    env_path = Path("D:/video-spec-builder-main/.env")
-    if not env_path.exists():
-        return
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
+    candidates = [
+        Path.cwd() / ".env",
+        Path.cwd().parent / ".env",
+        Path.cwd().parent.parent / ".env",
+    ]
+    for env_path in candidates:
+        if not env_path.exists():
             continue
-        k, _, v = line.partition("=")
-        k, v = k.strip(), v.strip()
-        if k.startswith("AGNES_"):
-            os.environ.setdefault(k, v)
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, _, v = line.partition("=")
+            k, v = k.strip(), v.strip()
+            if k.startswith("AGNES_"):
+                os.environ.setdefault(k, v)
+        if os.environ.get("AGNES_API_KEY"):
+            return
 
 
 _load_env_file()
@@ -60,8 +73,10 @@ def _resolve_api_key() -> str:
     key = os.environ.get("AGNES_API_KEY")
     if not key:
         raise RuntimeError(
-            "AGNES_API_KEY 未设置。请在 D:/video-spec-builder-main/.env 加一行：\n"
-            "AGNES_API_KEY=sk-..."
+            "AGNES_API_KEY 未设置。请在以下任一位置创建 .env 并加一行：\n"
+            "  ./（项目根目录）/.env\n"
+            "  AGNES_API_KEY=sk-...\n"
+            "或直接设置环境变量 AGNES_API_KEY。"
         )
     return key
 

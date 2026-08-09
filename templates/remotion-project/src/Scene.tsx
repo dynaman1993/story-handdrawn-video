@@ -58,10 +58,7 @@ const BottomSubtitle: React.FC<{text: string}> = ({text}) => {
   );
 };
 
-export const Scene: React.FC<{scene: SceneData; fps: number; lang?: string}> = ({
-  scene,
-  lang = 'en',
-}) => {
+export const Scene: React.FC<{scene: SceneData; fps: number}> = ({scene}) => {
   const isTeaching = Boolean(scene.keyword && scene.meaning && scene.definition && scene.example);
   const bg = isTeaching ? '#0b1220' : '#F8F6EF';
   const sentence = scene.text || scene.caption || scene.narration;
@@ -98,7 +95,7 @@ export const Scene: React.FC<{scene: SceneData; fps: number; lang?: string}> = (
           <BottomSubtitle text={sentence} />
         </>
       ) : (
-        <Caption text={scene.caption || sentence} lang={lang} />
+        <Caption text={scene.caption || sentence} />
       )}
     </AbsoluteFill>
   );

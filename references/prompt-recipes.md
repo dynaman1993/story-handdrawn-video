@@ -67,12 +67,15 @@ background, vignette, black background, glossy, neon
 
 ### 没 visual_plan 时
 
-脚本从中文原句机械提取「名词 + 动词」拼一个朴素英文描述。质量约 60%，70% 原则下能用。
-预算允许或题材敏感时，**强烈建议**写 visual_plan。
+脚本直接把中文原句作为 scene body 塞进 prompt。Agnes Video 是中国公司模型，
+能理解中文语义；`negative_prompt` 已强制排除画面文字，一般不会把中文字画出来。
+质量约 60–70%，70% 原则下能用。如果某段真的出乱码文字，单删那一段 mp4 重跑
+（或补 visual_plan 用英文 scene body，质量更高、无乱码风险）。
+题材敏感时，**强烈建议**写 visual_plan。
 
 ### 写 visual_plan 的硬规则
 
-- 用英文写（Agnes Video 对中文 prompt 支持差，会画乱码）。
+- 用英文写（Agnes Video 能理解中文，但英文 scene body 更稳、无乱码风险）。
 - **不写像素坐标、百分比、`y=510`、`10%`** —— 模型会把这些数字 literally 画上去。
 - 不写「不要画 XX」长串负面词 —— 会触发负面偏见，模型反而画出来。真要避免，用构图绕开（close-up / from behind）。
 - 不重复 STYLE_HEADER / MOTION_FOOTER 里已有的词。
@@ -143,7 +146,7 @@ no new characters, no added logos or text, hold the final composition clearly
 
 ### CQ001 实例（27 场的成功 visual）
 
-参考 `D:\story-skill\workspace\cq001-hdvideo\teaching_content.json`：
+参考模板自带的 `templates/remotion-project/examples/teaching_content.example.json`（CQ 系列前三场示例）：
 
 | 关键词 | 句意 | visual（前 80 字） |
 |---|---|---|
